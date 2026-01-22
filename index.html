@@ -407,10 +407,10 @@
       deck = cards.map((c,i)=>i);
       overlay.style.display = 'none';
       stage.style.display = 'block';
-      cards.forEach(c=>{
-  preloadImage(c.front);
-  preloadImage(c.back);
-});
+      //cards.forEach(c=>{
+  //preloadImage(c.front);
+ // preloadImage(c.back);
+//});
 
       // preload first pair to size nicely
       //try { await adjustCardSizeForPair(cards[deck[0]].front, cards[deck[0]].back); } catch(e){}
@@ -496,4 +496,5 @@ function preloadImage(src){
   </script>
 </body>
 </html>
+
 
