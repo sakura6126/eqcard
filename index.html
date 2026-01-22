@@ -247,19 +247,31 @@
     /* ===== SHOW TOP CARD =====
        Show the top of the deck (deck[0]) without animation */
     async function showTopCardImmediate(){
-      if(deck.length === 0) return;
-      const idx = deck[0];
-      const c = cards[idx];
-      flipped = false;
-      cardOuter.classList.remove('flipped');
-      // reset inner classes
-      cardInner.classList.remove('deck-out','deck-in');
-      // set images
-      imgFront.src = c.front;
-      imgBack.src  = c.back;
-      attachImageErrorHandler(imgFront, 'front', idx+1);
-      attachImageErrorHandler(imgBack, 'back', idx+1);
-      updateCounter();
+  if(deck.length === 0) return;
+
+  const idx = deck[0];
+  const c = cards[idx];
+
+  imgFront.src = c.front;
+  imgBack.src  = c.back;
+
+  // 👉 PRELOAD TRƯỚC & SAU
+  const nextIdx = deck[1];
+  const prevIdx = deck[deck.length - 1];
+
+  if(nextIdx !== undefined){
+    preloadImage(cards[nextIdx].front);
+    preloadImage(cards[nextIdx].back);
+  }
+
+  if(prevIdx !== undefined){
+    preloadImage(cards[prevIdx].front);
+    preloadImage(cards[prevIdx].back);
+  }
+
+  updateCounter();
+}
+
       // optional: try to adjust card size to fit both images
       //try { await adjustCardSizeForPair(c.front, c.back); } catch(e){}
     }
@@ -395,6 +407,11 @@
       deck = cards.map((c,i)=>i);
       overlay.style.display = 'none';
       stage.style.display = 'block';
+      cards.forEach(c=>{
+  preloadImage(c.front);
+  preloadImage(c.back);
+});
+
       // preload first pair to size nicely
       //try { await adjustCardSizeForPair(cards[deck[0]].front, cards[deck[0]].back); } catch(e){}
       showTopCardImmediate();
@@ -466,6 +483,17 @@ function enterFullscreen() {
   document.documentElement.requestFullscreen?.();
 }
 
+const imageCache = new Map();
+
+function preloadImage(src){
+  if(imageCache.has(src)) return;
+  const img = new Image();
+  img.src = src;
+  imageCache.set(src, img);
+}
+
+
   </script>
 </body>
 </html>
+
