@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EQ Card — Deck Flashcards</title>
+  <style>
+    :root{
+      --card-w: min(48vw, 440px); /* giảm size trên desktop, ôm ảnh */
+      --card-h: calc(var(--card-w) * 1.36); /* giữ portrait ratio ~ A4 */
+      --primary:#6366f1;
+      --muted:#6b7280;
+      --bg1: #eef2ff;
+      --bg2: #fff7fb;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{
+        min-height: 100dvh;
+        overflow: hidden;
+      margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(420px 220px at 8% 12%, #e0e7ff 0%, transparent 28%),
+        radial-gradient(420px 220px at 92% 88%, #fff0f6 0%, transparent 28%),
+        linear-gradient(180deg,var(--bg2),var(--bg1));
+      display:flex;align-items:flex-start;justify-content:center;padding:28px;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .app{
+      width:100%;max-width:980px;margin:0 auto;text-align:center;
+    }
+
+    header{margin-bottom:8px}
+    h1{margin:10px 0 8px;font-size:20px;color:#0f172a}
+
+    /* START MENU (simple) */
+    .overlay{
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(13,18,38,0.45);backdrop-filter:blur(4px);z-index:40;
+    }
+    .menu{
+      width:min(560px,92%);background:white;padding:22px;border-radius:12px;box-shadow:0 18px 50px rgba(2,6,23,0.35);text-align:left;
+    }
+    .menu h2{margin:0 0 6px;font-size:20px}
+    .menu p{margin:6px 0 0;color:#475569}
+    .menu .actions{display:flex;justify-content:flex-end;margin-top:16px;gap:10px}
+    button.primary{background:var(--primary);color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer}
+    button.ghost{background:white;border:1px solid #e6edf7;padding:9px 14px;border-radius:10px;cursor:pointer}
+
+    /* STAGE */
+    .stage{
+          max-height: 100dvh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding-top:6px;display:none}
+    .center-wrap{display:flex;gap:24px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+    .card-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:75%; height: 75%;max-width:720px;max-height: 75%;}
+
+    /* Card */
+    .card-outer{
+    width: min(var(--card-w), 70dvh / 1.36); /* 👈 ép theo chiều cao */
+    height: auto;
+    aspect-ratio: 1 / 1.36;
+    perspective: 1200px;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+
+    .card-inner{
+      width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .52s ease;border-radius:14px;
+    }
+    .card-outer.flipped .card-inner{ transform: rotateY(180deg); }
+    .card-face{
+      position:absolute;inset:0;border-radius:14px;background:transparent;box-shadow:0 18px 40px rgba(2,6,23,0.09);backface-visibility:hidden;display:flex;align-items:center;justify-content:center;overflow:hidden;
+    }
+    .card-front{ transform: rotateY(0deg); z-index:2 }
+    .card-back{ transform: rotateY(180deg); z-index:1 }
+    .card-face img{ width:100%; height:100%; object-fit:contain; display:block; pointer-events:none }
+
+    /* Deck animations */
+    .animating .card-inner{ transition: none !important; } /* disable flip during deck anim */
+    .deck-out{
+      animation: deckOut .48s forwards cubic-bezier(.2,.9,.3,1);
+    }
+    .deck-in{
+      animation: deckIn .48s forwards cubic-bezier(.2,.9,.3,1);
+    }
+
+    @keyframes deckOut {
+      0% { transform: translateY(0) rotate(0) scale(1); opacity:1; }
+      40% { transform: translateY(-16%) rotate(-6deg) scale(.98); opacity:.95; }
+      100%{ transform: translateY(-130%) rotate(-14deg) scale(.86); opacity:0; }
+    }
+    @keyframes deckIn {
+      0% { transform: translateY(130%) rotate(14deg) scale(.86); opacity:0; }
+      60%{ transform: translateY(-6%) rotate(-4deg) scale(.98); opacity:.98; }
+      100%{ transform: translateY(0) rotate(0) scale(1); opacity:1; }
+    }
+
+    /* controls */
+    .controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+    .controls button{border:none;padding:10px 14px;border-radius:999px;background:white;box-shadow:0 8px 18px rgba(2,6,23,0.08);cursor:pointer}
+    .controls button.primary{background:var(--primary);color:white}
+    .meta{margin-top:8px;color:var(--muted);font-size:14px}
+    .small{font-size:13px;color:#9aa3b2}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+
+    /* placeholder when missing */
+    .missing-placeholder{display:flex;align-items:center;justify-content:center;height:100%;font-weight:700;color:#b91c1c;background:linear-gradient(180deg,#fff7f7,#fff1f1);padding:12px;text-align:center}
+
+    :root{
+    --card-w: clamp(180px, 28vw, 300px);
+    --card-h: calc(var(--card-w) * 1.36);
+}
+    /* responsive: on small screens, card uses wide portion */
+    @media (max-height: 800px){
+    :root{
+    --card-w: clamp(160px, 26vw, 260px);}
+  }
+
+
+
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header><h1>EQ Card</h1></header>
+
+    <!-- Simple START MENU -->
+    <div class="overlay" id="startOverlay" role="dialog" aria-modal="true">
+      <div class="menu" role="document">
+        <h2>EQ Card</h2>
+        <p>Emotional intelligence flashcards — click <strong>Start</strong> to begin. Click the card to flip; use controls to navigate (Deck mode).</p>
+        <div class="actions">
+          <button class="ghost" id="cancelMenu">Close</button>
+          <button class="primary" id="startBtn">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage -->
+    <div class="stage" id="stage">
+      <div class="center-wrap">
+        <div class="card-wrap">
+          <div class="card-outer" id="card" aria-label="Flashcard" tabindex="0">
+            <div class="card-inner" id="cardInner">
+              <div class="card-face card-front" id="frontFace"><img id="imgFront" alt="Front"></div>
+              <div class="card-face card-back" id="backFace"><img id="imgBack" alt="Back"></div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button id="prevBtn">◀ Prev</button>
+            <button id="flipBtn" class="primary">Flip</button>
+            <button id="nextBtn">Next ▶</button>
+            <button id="randBtn">Random</button>
+          </div>
+
+          <div class="meta">
+            <div id="counter">Card 1 / 25</div>
+            <div class="small">Click card to flip • Deck animation when navigating</div>
+          </div>
+        </div>
+      </div>
+
+      <footer>© Copyright belongs to Miyazaki Haruto Entertainment Co., Ltd.</footer>
+    </div>
+  </div>
+
+  <!-- ===== SOUND ===== -->
+<audio id="sndFlip" src="sounds/flip.mp3" preload="auto"></audio>
+<audio id="sndSlide" src="sounds/slide.mp3" preload="auto"></audio>
+
+
+  <script>
+    /* ===== CONFIG ===== */
+    const DEFAULT_TOTAL = 25;    // mặc định số thẻ
+    const MAX_ALLOWED = 50;
+
+    /* ===== STATE ===== */
+    let TOTAL_CARDS = DEFAULT_TOTAL;
+    let cards = [];
+    let deck = []; // queue of indices (0-based)
+    let animating = false;
+    let flipped = false;
+
+    /* ===== ELEMENTS ===== */
+    const overlay = document.getElementById('startOverlay');
+    const startBtn = document.getElementById('startBtn');
+    const cancelMenu = document.getElementById('cancelMenu');
+    const stage = document.getElementById('stage');
+
+    const cardOuter = document.getElementById('card');
+    const cardInner = document.getElementById('cardInner');
+    const imgFront = document.getElementById('imgFront');
+    const imgBack = document.getElementById('imgBack');
+    const counter = document.getElementById('counter');
+
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const flipBtn = document.getElementById('flipBtn');
+    const randBtn = document.getElementById('randBtn');
+
+    const sndFlip = document.getElementById('sndFlip');
+    const sndSlide = document.getElementById('sndSlide');
+
+//    imgFront.onload = () => setTimeout(autoFitStage, 30);
+//    imgBack.onload  = () => setTimeout(autoFitStage, 30);
+
+    sndFlip.volume = 0.5;
+    sndSlide.volume = 0.4;
+
+    function play(sound){
+      if(!sound) return;
+        sound.currentTime = 0;
+        sound.play().catch(()=>{});
+    }
+
+    /* ===== HELPERS ===== */
+    function buildCards(total){
+      return Array.from({length: total}).map((_,i)=>({
+        front: `images/card-${i+1}-front.jpg`,
+        back:  `images/card-${i+1}-back.jpg`,
+        idx: i
+      }));
+    }
+
+    function updateCounter(){
+      if(deck.length === 0) return;
+      const topIdx = deck[0];
+      counter.textContent = `Card ${cards[topIdx].idx + 1} / ${TOTAL_CARDS}`;
+    }
+
+    function attachImageErrorHandler(imgEl, side, idx){
+      if(!imgEl) return;
+      imgEl.onerror = function(){
+        const parent = imgEl.parentElement;
+        if(!parent) return;
+        parent.innerHTML = `<div class="missing-placeholder">Missing ${side.toUpperCase()}<div style="font-weight:400;font-size:13px;margin-top:6px">card-${idx}-${side}.jpg</div></div>`;
+      };
+    }
+
+    /* ===== SHOW TOP CARD =====
+       Show the top of the deck (deck[0]) without animation */
+    async function showTopCardImmediate(){
+      if(deck.length === 0) return;
+      const idx = deck[0];
+      const c = cards[idx];
+      flipped = false;
+      cardOuter.classList.remove('flipped');
+      // reset inner classes
+      cardInner.classList.remove('deck-out','deck-in');
+      // set images
+      imgFront.src = c.front;
+      imgBack.src  = c.back;
+      attachImageErrorHandler(imgFront, 'front', idx+1);
+      attachImageErrorHandler(imgBack, 'back', idx+1);
+      updateCounter();
+      // optional: try to adjust card size to fit both images
+      //try { await adjustCardSizeForPair(c.front, c.back); } catch(e){}
+    }
+
+    /* ===== DECK NEXT (kéo thẻ lên rồi đẩy xuống cuối) ===== */
+    function deckNext(){
+      if(animating || deck.length <= 1) return;
+      animating = true;
+      play(sndSlide)
+      document.getElementById('app').classList.add('animating');
+      // ensure showing front
+      cardOuter.classList.remove('flipped'); flipped = false;
+
+      // animate out
+      cardInner.classList.add('deck-out');
+
+      cardInner.addEventListener('animationend', function handlerOut(){
+        cardInner.removeEventListener('animationend', handlerOut);
+        cardInner.classList.remove('deck-out');
+
+        // rotate deck: move first to end
+        const moved = deck.shift();
+        deck.push(moved);
+
+        // set new top images (immediately)
+        const nextIdx = deck[0];
+        const c = cards[nextIdx];
+        imgFront.src = c.front;
+        imgBack.src  = c.back;
+        attachImageErrorHandler(imgFront, 'front', nextIdx+1);
+        attachImageErrorHandler(imgBack, 'back', nextIdx+1);
+        updateCounter();
+
+        // animate in
+        cardInner.classList.add('deck-in');
+        cardInner.addEventListener('animationend', function handlerIn(){
+          cardInner.removeEventListener('animationend', handlerIn);
+          cardInner.classList.remove('deck-in');
+          animating = false;
+          document.getElementById('app').classList.remove('animating');
+//          autoFitStage();
+        }, { once: true });
+      }, { once: true });
+    }
+
+    /* ===== DECK PREV (lấy lá cuối cùng kéo lên đầu) ===== */
+    function deckPrev(){
+      if(animating || deck.length <= 1) return;
+      animating = true;
+      play(sndSlide)
+      document.getElementById('app').classList.add('animating');
+      cardOuter.classList.remove('flipped'); flipped = false;
+
+      // to show prev, we first take last and put to front, but we want a smooth animation:
+      // Move last to front instantly, set images, animate in from top (reverse)
+      const last = deck.pop();
+      deck.unshift(last);
+
+      const c = cards[deck[0]];
+      // start with deck-in reversed animation (we use same deck-in; it's fine visually)
+      imgFront.src = c.front;
+      imgBack.src  = c.back;
+      attachImageErrorHandler(imgFront, 'front', deck[0]+1);
+      attachImageErrorHandler(imgBack, 'back', deck[0]+1);
+      updateCounter();
+
+      // animate in
+      cardInner.classList.add('deck-in');
+      cardInner.addEventListener('animationend', function handlerIn(){
+        cardInner.removeEventListener('animationend', handlerIn);
+        cardInner.classList.remove('deck-in');
+        animating = false;
+        document.getElementById('app').classList.remove('animating');
+        //autoFitStage();
+      }, { once: true });
+    }
+
+    /* ===== RANDOM (jump to random top by rotating deck) ===== */
+    function deckRandom(){
+        play(sndSlide);
+      if(animating || deck.length <= 1) return;
+      const rand = Math.floor(Math.random() * deck.length);
+      if(rand === 0) return; // already top
+      // rotate deck so that deck[rand] becomes front (preserve order)
+      const head = deck.splice(0, rand);
+      deck = deck.concat(head);
+      // show with deck-in
+      animating = true;
+      document.getElementById('app').classList.add('animating');
+      const c = cards[deck[0]];
+      imgFront.src = c.front;
+      imgBack.src  = c.back;
+      attachImageErrorHandler(imgFront, 'front', deck[0]+1);
+      attachImageErrorHandler(imgBack, 'back', deck[0]+1);
+      updateCounter();
+      cardInner.classList.add('deck-in');
+      cardInner.addEventListener('animationend', function handlerIn(){
+        cardInner.removeEventListener('animationend', handlerIn);
+        cardInner.classList.remove('deck-in');
+        animating = false;
+        document.getElementById('app').classList.remove('animating');
+        //autoFitStage();
+      }, { once: true });
+    }
+
+    /* ===== FLIP ===== */
+    function flipCard(){
+      if(animating) return;
+      play(sndFlip)
+      flipped = !flipped;
+      cardOuter.classList.toggle('flipped', flipped);
+    }
+
+    /* ===== RESIZE TO FIT BOTH IMAGES (so face/back have same size) ===== */
+    function loadDimensions(src, timeout = 2500){
+      return new Promise(resolve=>{
+        const img = new Image();
+        let done = false;
+        img.onload = () => { if(!done){ done=true; resolve({w:img.naturalWidth||1,h:img.naturalHeight||1,ok:true}); } };
+        img.onerror = () => { if(!done){ done=true; resolve({w:360,h:480,ok:false}); } };
+        img.src = src + '?_t=' + Date.now();
+        setTimeout(()=>{ if(!done){ done=true; resolve({w:360,h:480,ok:false}); } }, timeout);
+      });
+    }
+
+    
+
+    /* ===== START / INIT ===== */
+    startBtn.addEventListener('click', async ()=>{
+      TOTAL_CARDS = Math.min(DEFAULT_TOTAL, MAX_ALLOWED);
+      cards = buildCards(TOTAL_CARDS);
+      // initial deck order 0..n-1
+      deck = cards.map((c,i)=>i);
+      overlay.style.display = 'none';
+      stage.style.display = 'block';
+      // preload first pair to size nicely
+      //try { await adjustCardSizeForPair(cards[deck[0]].front, cards[deck[0]].back); } catch(e){}
+      showTopCardImmediate();
+      //requestAnimationFrame(() => {setTimeout(autoFitStage, 80);});
+
+    });
+
+    cancelMenu.addEventListener('click', ()=>{ overlay.style.display = 'none'; });
+
+    /* ===== UI bindings ===== */
+    cardOuter.addEventListener('click', flipCard);
+    flipBtn.addEventListener('click', (e)=>{ e.stopPropagation(); flipCard(); });
+    nextBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deckNext(); });
+    prevBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deckPrev(); });
+    randBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deckRandom(); });
+
+    window.addEventListener('keydown', (e)=>{
+      if(overlay.style.display !== 'none') return;
+      const tag = document.activeElement && document.activeElement.tagName;
+      if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if(e.key === 'ArrowRight') { e.preventDefault(); deckNext(); }
+      else if(e.key === 'ArrowLeft') { e.preventDefault(); deckPrev(); }
+      else if(e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); }
+    });
+
+    // optional: Escape reopens menu
+    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ overlay.style.display = 'flex'; stage.style.display = 'none'; } });
+  
+    /* ===== AUTO FIT TO VIEWPORT =====
+   Tự scale toàn bộ stage nếu bị che chiều cao */
+//function autoFitStage() {
+//  const scaleWrap = document.getElementById('stageScale');
+//  const stageEl = document.getElementById('stage');
+//  if (!scaleWrap || !stageEl || stageEl.style.display === 'none') return;
+
+  // reset scale
+//  scaleWrap.style.transform = 'scale(1)';
+
+  // ưu tiên viewport THỰC
+//  const vv = window.visualViewport;
+//  const viewportW = vv ? vv.width : window.innerWidth;
+//  const viewportH = vv ? vv.height : window.innerHeight;
+
+//  const rect = scaleWrap.getBoundingClientRect();
+
+  // nếu viewport chưa ổn định thì bỏ qua
+//  if (rect.height === 0 || viewportH === 0) return;
+
+//  const padding = 12;
+
+//  let scaleH = (viewportH - padding) / rect.height;
+//  let scaleW = (viewportW - padding) / rect.width;
+
+//  let scale = Math.min(scaleH, scaleW, 1);
+
+  // không cho quá nhỏ (tránh "biến mất")
+//  scale = Math.max(scale, 0.65);
+
+//  scaleWrap.style.transform = `scale(${scale})`;
+//}
+
+//if (window.visualViewport) {
+//  visualViewport.addEventListener('resize', () => {
+//    requestAnimationFrame(() => autoFitStage());
+//  });
+//}
+
+function enterFullscreen() {
+  document.documentElement.requestFullscreen?.();
+}
+
+  </script>
+</body>
+</html>
